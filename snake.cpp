@@ -3,20 +3,21 @@
 #include<conio.h>
 #include<Windows.h>
 #include<list>
+#include<graphics.h>
 using namespace std;
-//控制台的长度比例为宽的两倍 idk
 
 //蛇
 typedef struct _SNAKE {
 	int x;
 	int y;
-	struct _SNAKE* next;
+	_SNAKE* next;
+	_SNAKE* prev;
 }Snake;
 
 void gameStart(); //游戏开始
 void welcome(); //欢迎界面
-void createMap(); //创建地图
-void gotoxy(int x,int y); //设置光标
+//void createMap(); //创建地图
+//void gotoxy(int x,int y); //设置光标
 void InitSnake(); //初始化蛇
 void moveSnake(int direction,Snake* food,bool& haveFood,bool& end); //移动蛇
 void runSnake(); //控制蛇进行游戏
@@ -24,14 +25,17 @@ void eatFood(bool& haveFood,Snake* food); //随机生成食物
 void gameEnd(); //游戏结束
 
 Snake* g_phead = nullptr;
+Snake* g_ptail = nullptr;
 
-enum {up = 72,down = 80,RIGHT = 77,LEFT = 75}; //枚举方向
+enum {UP = 72,DOWN = 80,RIGHT = 77,LEFT = 75}; //枚举方向
+
 
 int main()
 {
+
 	gameStart(); 
-	welcome();
-	createMap();
+	//welcome();
+	//createMap();
 	InitSnake();
 	runSnake();
 	return 0;
@@ -47,57 +51,31 @@ void welcome()
 
 void gameStart() 
 {
-	system("mode con cols=100 lines=40"); //修改控制台大小
-}
 
-void createMap() 
-{
-	for (int i = 0; i < 60; i += 2) {
-
-		gotoxy(i, 0);
-		cout << "*";
-		gotoxy(i, 29);
-		cout << "*";
-	}
-	for (int i = 0; i < 30; i++) {
-		gotoxy(0, i);
-		cout << "*";
-		gotoxy(58, i);
-		cout << "*";
-	}	
-}
-
-void gotoxy(int x, int y) 
-{
-	COORD pos = { x,y };//坐标
-	//包含winows.h，相当于返回控制台窗口ID
-	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE); //得到控制台
-	
-	SetConsoleCursorPosition(hOut,pos);//设置光标位置
+	initgraph(480,480);
+	setbkcolor(CYAN);
+	cleardevice();
 }
 
 void InitSnake() 
 {
-	Snake* temp = new Snake();
-	temp->x = 30;
-	temp->y = 10;
-	temp->next = nullptr;
-	g_phead = temp;
+	Snake* p = new Snake();
+	p->x = 100;
+	p->y = 20;
+	p->next = nullptr;
+	g_phead = p;
+	solidcircle(p->x, p->y, 10);
 
-	for (int i = 0; i < 4; i++) {
-		Snake* p = new Snake();
-		p->x = 30 + i; //横向打印初始蛇
-		p->y = 10;
-		p->next = nullptr;
-		temp->next = p;
-		temp = p;
-	}
-		
-	temp = g_phead;
-	while (temp != nullptr) {
-		gotoxy(temp->x, temp->y);
-		cout << "*";
-		temp = temp->next;
+	for (int i = 0; i <= 60; i = i + 20) {
+		Snake* temp = new Snake();
+		temp->x = 80 - i; 
+		temp->y = 20;
+		temp->next = nullptr;
+		p->next = temp; //绑定前后节点
+		temp->prev = p;
+		p = temp;
+		solidcircle(temp->x, temp->y, 10);
+		g_ptail = temp;
 	}
 }
 //必须是死循环，不然程序会终止
@@ -114,8 +92,8 @@ void runSnake() {
 			ch = _getch();
 			switch (ch) {
 			case 72: //上
-				if (direction == down) break;
-				direction = up;
+				if (direction == DOWN) break;
+				direction = UP;
 				break;
 			case 75: //左
 				if (direction == RIGHT) break;
@@ -126,90 +104,87 @@ void runSnake() {
 				direction = RIGHT;
 				break;
 			case 80: //下
-				if (direction == up) break;
-				direction = down;
+				if (direction == UP) break;
+				direction = DOWN;
 				break;
 			}
 		}
+
+		if (haveFood)
 		eatFood(haveFood,food);
 
 		moveSnake(direction,food,haveFood,end);
 
-		Sleep(100); //速度
+		Sleep(200); //速度
 	}
 	gameEnd();
 }
-//增尾删头
-void moveSnake(int direction,Snake* food,bool& haveFood,bool& end) {
 
-	//找尾巴
-	Snake* p = g_phead;
-	while (p->next != nullptr) {
-		p = p->next;
-	}
+void moveSnake(int direction, Snake* food, bool& haveFood, bool& end)
+{
 	//判断是否撞墙
-	if (p->x == 0 || p->x == 58 || p->y == 0 || p->y == 28) {
+	if (g_phead->x == 0 || g_phead->x == 480 ||
+		g_phead->y == 0 || g_phead->y == 480) {
 		end = false;
 	}
-	
-	if (p->x == food->x && p->y == food->y) {
+	//判断是否吃到食物
+	if (g_phead->x == food->x && g_phead->y == food->y) {
 		//p->next = food;
 		haveFood = true;
 	}
-	//加节点
+	//增头删尾
 	Snake* temp = new Snake();
-	temp->next = nullptr;
-	temp->x = 0;
-	temp->y = 0;
-	p->next = temp;
-	if (direction == RIGHT) {
-		temp->x = p->x + 2;
-		temp->y = p->y;
-	}
-	else if (direction == LEFT){
-		temp->x = p->x - 2;
-		temp->y = p->y;
-	}
-	else if (direction == up) {
-		temp->x = p->x;
-		temp->y = p->y -1;
-	}
-	else if (direction == down) {
-		temp->x = p->x;
-		temp->y = p->y + 1;
-	}
+	g_phead->prev = temp;
+	temp->next = g_phead;
+	temp->prev = nullptr;
 
-	//打印新节点
-	gotoxy(temp->x, temp->y);
-	cout << "*";
-	if (!haveFood) {
-		gotoxy(g_phead->x, g_phead->y);
-		cout << " ";
-		//删除头
-		temp = g_phead->next;
-		delete g_phead;
-		g_phead = temp;
+	switch (direction) {
+	case (RIGHT): {
+		temp->x = g_phead->x + 20;
+		temp->y = g_phead->y;
+		break;
+	}
+	case (LEFT): {
+		temp->x = g_phead->x - 20;
+		temp->y = g_phead->y;
+		break;
+	}
+	case (UP): {
+		temp->x = g_phead->x;
+		temp->y = g_phead->y - 20;
+		break;
+	}
+	case (DOWN): {
+		temp->x = g_phead->x;
+		temp->y = g_phead->y + 20;
+		break;
+	}
+	}
+	 //打印新节点
+	solidcircle(temp->x, temp->y, 10);
+	g_phead = temp;
+
+	if (!haveFood) { //如果没吃到到食物，删除尾部节点
+	clearcircle(g_ptail->x, g_ptail->y, 10);
+	g_ptail = g_ptail->prev;
 	}
 }
 //设置一个bool值来判断当前地图是否有食物
-void eatFood(bool& haveFood,Snake* food) {
-	if (haveFood) {
+void eatFood(bool& haveFood,Snake* food)
+{
 		unsigned seed;
 		seed = time(0);
 		srand(seed);
 
-		int foodx = rand() % 58 + 2;
-		int foody = rand() % 28 + 2;
+		int foodx = rand() % 20;
+		int foody = rand() % 20;
 
-		food->x = foodx;
-		food->y = foody;
-		food->next = nullptr;
+		food->x = foodx * 20;
+		food->y = foody * 20;
 
-		gotoxy(food->x, food->y);
-		cout << "*";
+		solidcircle(food->x, food->y, 10);
 		haveFood = false;
-	}
-}	
+}
 
 void gameEnd() {
 	system("pause"); //暂停
